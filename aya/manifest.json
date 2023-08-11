@@ -1,0 +1,17 @@
+{
+    "manifest_version": 3,
+    "name": "promptInjection",
+    "description": "Inject prompts into Aya annotation tool.",
+    "version": "1.0",
+    "content_scripts": [
+        {
+            "matches": [
+                "https://instruct-multilingual-frontend-dtjnk4f6ra-ue.a.run.app/workspace?task=2"
+            ],
+            "js": [
+                "content-script.js"
+            ],
+            "run_at": "document_start"
+        }
+    ]
+}
