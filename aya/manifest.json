@@ -9,9 +9,14 @@
                 "https://instruct-multilingual-frontend-dtjnk4f6ra-ue.a.run.app/workspace?task=2"
             ],
             "js": [
-                "content-script.js"
+                "content-script.js",
+                "jquery.min.js"
             ],
             "run_at": "document_start"
         }
-    ]
+    ],
+    "action": {
+        "default_title": "Click to view a popup",
+        "default_popup": "popup.html"
+    }
 }
