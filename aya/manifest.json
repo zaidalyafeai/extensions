@@ -10,13 +10,10 @@
             ],
             "js": [
                 "content-script.js",
-                "jquery.min.js"
+                "jquery.min.js",
+                "prompts.js"
             ],
             "run_at": "document_start"
         }
-    ],
-    "action": {
-        "default_title": "Click to view a popup",
-        "default_popup": "popup.html"
-    }
+    ]
 }
