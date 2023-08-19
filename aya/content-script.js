@@ -1,12 +1,11 @@
 function getDataset(dataset_name, config_name = null) {
-    const data_name = dataset_name.replace("/", "%2F")
-    if (config_name == null)
-        config_name = dataset_name.replace("/", "--")
-
-    url = `https://datasets-server.huggingface.co/rows?dataset=${data_name}&config=${config_name}&split=train&offset=0&limit=5000`
+    dataset_name = dataset_name.replace("/", "%2F")
+    config_name = config_name.replace("/", "--")
+    url = `https://datasets-server.huggingface.co/rows?dataset=${dataset_name}&config=${config_name}&split=train&offset=200&limit=300`
     console.log(url)
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open("GET", url, false);
+    xmlHttp.setRequestHeader("Authorization", "Bearer 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");
     xmlHttp.send(null);
     return JSON.parse(xmlHttp.responseText);
 }
@@ -16,39 +15,68 @@ var target_key;
 var dataset;
 var reload_dataset = true;
 var counter = 0;
-
+var currTask = "Select Element";
+var labels = []
+var full_data;
+var labels_ar;
 window.onload = function () {
-    console.log(prompts)
     function applyTemplate(template, value) {
         if (template == "")
             return value
         return template.replace("###", value)
     }
+    function getRandomIndex(length) {
+        return Math.floor(Math.random() * length)
+    }
+
+    function processTarget(target) {
+        if (labels.length > 0) {
+            return labels_ar[target]
+        }
+        else {
+            return target
+        }
+    }
     function getNext() {
         const dataset_name = document.getElementById("dataset_name").value
+        labels_ar = document.getElementById("labels").value.split(",")
         if (reload_dataset) {
-            dataset = getDataset(dataset_name)["rows"];
-            console.log(dataset)
-            if (dataset == null) {
-                dataset = getDataset(dataset_name, config_name = "default")["rows"];
+            config = document.getElementById("config").value
+            full_data = getDataset(dataset_name, config = config);
+            dataset = full_data['rows']
+            labels = []
+            for (const feature of full_data['features']) {
+                if (feature['name'] == "label") {
+                    for (const label in feature['type']['names']) {
+                        labels.push(label)
+                    }
+                    break
+                }
             }
             reload_dataset = false;
         }
         const input_name = document.getElementById("input_column_name").value.trim();
         const target_name = document.getElementById("target_column_name").value.trim();
 
-        elementDict = dataset[Math.floor(Math.random() * dataset.length)].row;
+        elementDict = dataset[getRandomIndex(dataset.length)].row;
 
         var textAreaList = document.getElementsByTagName('textarea');
+
+        if (currTask != "Select Element") {
+            console.log(currTask);
+            const idx = getRandomIndex(prompts[currTask].length);
+            document.getElementById('prompt_input_template').value = prompts[currTask][idx]['inputs'];
+            document.getElementById('prompt_target_template').value = prompts[currTask][idx]['targets'];
+        }
         const input_template = document.getElementById('prompt_input_template').value.trim()
         const target_template = document.getElementById('prompt_target_template').value.trim()
 
         var input = elementDict[input_name]
-        var target = elementDict[target_name]
+        var target = processTarget(elementDict[target_name])
 
         var regex = document.getElementById('replace_regex').value.trim()
 
-        if (regex != "") {
+        if (regex != "/") {
             input = input.replace(new RegExp(regex, "g"), "")
             target = target.replace(new RegExp(regex, "g"), "")
 
@@ -88,10 +116,7 @@ window.onload = function () {
         }
 
         $('select').on('change', function () {
-            if (tasks.includes(this.value)) {
-                document.getElementById('prompt_input_template').value = prompts[this.value][0]['inputs'];
-                document.getElementById('prompt_target_template').value = prompts[this.value][0]['targets'];
-            }
+            currTask = this.value;
         });
     }
     function createTextAreaField(mainDiv, label = "", value = "") {
@@ -112,16 +137,18 @@ window.onload = function () {
 
             var mainDiv = document.getElementsByClassName('css-7sd70x')[0]
             createMenuField(mainDiv, Object.keys(prompts))
-            createInputField(mainDiv, label = "Replace Regex", value = "[س|ج]" + "[0-9]* - - ")
+            createInputField(mainDiv, label = "Labels", value = "")
+            createInputField(mainDiv, label = "Replace Regex", value = "")
 
             createTextAreaField(mainDiv, label = "Prompt Target Template", value = 'الإجابة الصحيحة هي "###"')
-            createInputField(mainDiv, label = "Target Column Name", value = "answer")
+            createInputField(mainDiv, label = "Target Column Name", value = "sentiment")
 
             createTextAreaField(mainDiv, label = "Prompt Input Template", value = 'أجب على السؤال التالي "###"')
-            createInputField(mainDiv, label = "Input Column Name", value = "question")
+            createInputField(mainDiv, label = "Input Column Name", value = "sentence")
             createInputField(mainDiv, label = "Submissions", value = "0", br = "<br>")
 
-            createInputField(mainDiv, label = "Dataset Name", value = "HeshamHaroon/QA_Arabic")
+            createInputField(mainDiv, label = "config", value = "eastwind/semeval-2016-absa-reviews-arabic")
+            createInputField(mainDiv, label = "Dataset Name", value = "eastwind/semeval-2016-absa-reviews-arabic")
             $('input').on('input', function (e) {
                 reload_dataset = true;
             });
