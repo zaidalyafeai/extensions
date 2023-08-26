@@ -1,7 +1,7 @@
-function getDataset(dataset_name, config_name = null) {
+function getDataset(dataset_name, config_name = null, idx = 0) {
     dataset_name = dataset_name.replace("/", "%2F")
     config_name = config_name.replace("/", "--")
-    url = `https://datasets-server.huggingface.co/rows?dataset=${dataset_name}&config=${config_name}&split=train&offset=200&limit=300`
+    url = `https://datasets-server.huggingface.co/first-rows?dataset=${dataset_name}&config=${config_name}&split=train&offset=${idx * 100}&limit=${(idx + 1) * 100}`
     console.log(url)
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open("GET", url, false);
@@ -19,11 +19,21 @@ var currTask = "Select Element";
 var labels = []
 var full_data;
 var labels_ar;
+var idx = 0;
+var next_100 = 0;
+
 window.onload = function () {
-    function applyTemplate(template, value) {
+    function applyTemplate(template, first_input, second_input) {
         if (template == "")
             return value
-        return template.replace("###", value)
+
+        const matches = template.split("###");
+        console.log(matches)
+        if (matches.length == 2) {
+            return template.replace("###", first_input);
+        } else if (matches.length == 3) {
+            return matches[0] + first_input + matches[1] + second_input + matches[2]
+        }
     }
     function getRandomIndex(length) {
         return Math.floor(Math.random() * length)
@@ -40,9 +50,14 @@ window.onload = function () {
     function getNext() {
         const dataset_name = document.getElementById("dataset_name").value
         labels_ar = document.getElementById("labels").value.split(",")
+        if (idx == 100) {
+            next_100 += 1;
+            idx = 0;
+            reload_dataset = true;
+        }
         if (reload_dataset) {
             config = document.getElementById("config").value
-            full_data = getDataset(dataset_name, config = config);
+            full_data = getDataset(dataset_name, config = config, idx = next_100);
             dataset = full_data['rows']
             labels = []
             for (const feature of full_data['features']) {
@@ -53,12 +68,14 @@ window.onload = function () {
                     break
                 }
             }
+            console.log(labels)
             reload_dataset = false;
         }
-        const input_name = document.getElementById("input_column_name").value.trim();
+        const input_name_1 = document.getElementById("input_column_name_1").value.trim();
+        const input_name_2 = document.getElementById("input_column_name_2").value.trim();
         const target_name = document.getElementById("target_column_name").value.trim();
 
-        elementDict = dataset[getRandomIndex(dataset.length)].row;
+        elementDict = dataset[idx].row;
 
         var textAreaList = document.getElementsByTagName('textarea');
 
@@ -71,27 +88,35 @@ window.onload = function () {
         const input_template = document.getElementById('prompt_input_template').value.trim()
         const target_template = document.getElementById('prompt_target_template').value.trim()
 
-        var input = elementDict[input_name]
+        var first_input = elementDict[input_name_1];
+        var second_input;
+        if (second_input != "") {
+            second_input = elementDict[input_name_2];
+        }
         var target = processTarget(elementDict[target_name])
 
         var regex = document.getElementById('replace_regex').value.trim()
 
         if (regex != "/") {
-            input = input.replace(new RegExp(regex, "g"), "")
+            first_input = first_input.replace(new RegExp(regex, "g"), "")
             target = target.replace(new RegExp(regex, "g"), "")
 
-            input = input.trim()
+            first_input = first_input.trim()
             target = target.trim()
         }
 
         promptTextArea = textAreaList[2];
         completionTextArea = textAreaList[3];
-        promptTextArea.value = applyTemplate(input_template, input);
+        console.log(first_input);
+        console.log(second_input);
+        console.log(elementDict[target_name])
+        promptTextArea.value = applyTemplate(input_template, first_input, second_input);
         var event = new Event('input', { bubbles: true });
         promptTextArea.dispatchEvent(event);
         completionTextArea.value = applyTemplate(target_template, target);
         var event = new Event('input', { bubbles: true });
         completionTextArea.dispatchEvent(event);
+        idx += 1;
     }
     function createMenuField(mainDiv, tasks) {
 
@@ -140,15 +165,16 @@ window.onload = function () {
             createInputField(mainDiv, label = "Labels", value = "")
             createInputField(mainDiv, label = "Replace Regex", value = "")
 
-            createTextAreaField(mainDiv, label = "Prompt Target Template", value = 'الإجابة الصحيحة هي "###"')
-            createInputField(mainDiv, label = "Target Column Name", value = "sentiment")
+            createTextAreaField(mainDiv, label = "Prompt Target Template", value = '')
+            createInputField(mainDiv, label = "Target Column Name", value = "diacratized")
 
-            createTextAreaField(mainDiv, label = "Prompt Input Template", value = 'أجب على السؤال التالي "###"')
-            createInputField(mainDiv, label = "Input Column Name", value = "sentence")
+            createTextAreaField(mainDiv, label = "Prompt Input Template", value = '')
+            createInputField(mainDiv, label = "Input Column Name 2", value = "")
+            createInputField(mainDiv, label = "Input Column Name 1", value = "text")
             createInputField(mainDiv, label = "Submissions", value = "0", br = "<br>")
 
-            createInputField(mainDiv, label = "config", value = "eastwind/semeval-2016-absa-reviews-arabic")
-            createInputField(mainDiv, label = "Dataset Name", value = "eastwind/semeval-2016-absa-reviews-arabic")
+            createInputField(mainDiv, label = "config", value = "arbml/tashkeela")
+            createInputField(mainDiv, label = "Dataset Name", value = "arbml/tashkeela")
             $('input').on('input', function (e) {
                 reload_dataset = true;
             });
@@ -156,7 +182,6 @@ window.onload = function () {
             $('#submitButton').on('click', function (e) {
                 console.log('submitted!');
                 document.getElementById("submissions").value = parseInt(document.getElementById("submissions").value) + 1
-
             });
 
             clearInterval(myInterval)
