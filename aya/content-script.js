@@ -1,7 +1,7 @@
 function getDataset(dataset_name, config_name = null, idx = 0) {
     dataset_name = dataset_name.replace("/", "%2F")
     config_name = config_name.replace("/", "--")
-    url = `https://datasets-server.huggingface.co/first-rows?dataset=${dataset_name}&config=${config_name}&split=train&offset=${idx * 100}&limit=${(idx + 1) * 100}`
+    url = `https://datasets-server.huggingface.co/rows?dataset=${dataset_name}&config=${config_name}&split=train&offset=${idx * 100}&limit=${(idx + 1) * 100}`
     console.log(url)
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open("GET", url, false);
@@ -20,12 +20,12 @@ var labels = []
 var full_data;
 var labels_ar;
 var idx = 0;
-var next_100 = 0;
+var next_100 = 6;
 
 window.onload = function () {
     function applyTemplate(template, first_input, second_input) {
         if (template == "")
-            return value
+            return first_input + second_input
 
         const matches = template.split("###");
         console.log(matches)
@@ -44,12 +44,13 @@ window.onload = function () {
             return labels_ar[target]
         }
         else {
-            return target
+            return target.join("\n")
         }
     }
     function getNext() {
         const dataset_name = document.getElementById("dataset_name").value
         labels_ar = document.getElementById("labels").value.split(",")
+        console.log(idx)
         if (idx == 100) {
             next_100 += 1;
             idx = 0;
@@ -68,7 +69,6 @@ window.onload = function () {
                     break
                 }
             }
-            console.log(labels)
             reload_dataset = false;
         }
         const input_name_1 = document.getElementById("input_column_name_1").value.trim();
@@ -88,9 +88,12 @@ window.onload = function () {
         const input_template = document.getElementById('prompt_input_template').value.trim()
         const target_template = document.getElementById('prompt_target_template').value.trim()
 
-        var first_input = elementDict[input_name_1];
-        var second_input;
-        if (second_input != "") {
+        var first_input = "";
+        if (input_name_1 != "") {
+            first_input = elementDict[input_name_1]
+        }
+        var second_input = "";
+        if (input_name_2 != "") {
             second_input = elementDict[input_name_2];
         }
         var target = processTarget(elementDict[target_name])
@@ -110,10 +113,12 @@ window.onload = function () {
         console.log(first_input);
         console.log(second_input);
         console.log(elementDict[target_name])
+        console.log(input_template)
+        console.log(target_template)
         promptTextArea.value = applyTemplate(input_template, first_input, second_input);
         var event = new Event('input', { bubbles: true });
         promptTextArea.dispatchEvent(event);
-        completionTextArea.value = applyTemplate(target_template, target);
+        completionTextArea.value = applyTemplate(target_template, target, "");
         var event = new Event('input', { bubbles: true });
         completionTextArea.dispatchEvent(event);
         idx += 1;
@@ -166,15 +171,15 @@ window.onload = function () {
             createInputField(mainDiv, label = "Replace Regex", value = "")
 
             createTextAreaField(mainDiv, label = "Prompt Target Template", value = '')
-            createInputField(mainDiv, label = "Target Column Name", value = "diacratized")
+            createInputField(mainDiv, label = "Target Column Name", value = "poem verses")
 
             createTextAreaField(mainDiv, label = "Prompt Input Template", value = '')
-            createInputField(mainDiv, label = "Input Column Name 2", value = "")
-            createInputField(mainDiv, label = "Input Column Name 1", value = "text")
+            createInputField(mainDiv, label = "Input Column Name 2", value = "poem theme")
+            createInputField(mainDiv, label = "Input Column Name 1", value = "poem meter")
             createInputField(mainDiv, label = "Submissions", value = "0", br = "<br>")
 
-            createInputField(mainDiv, label = "config", value = "arbml/tashkeela")
-            createInputField(mainDiv, label = "Dataset Name", value = "arbml/tashkeela")
+            createInputField(mainDiv, label = "config", value = "default")
+            createInputField(mainDiv, label = "Dataset Name", value = "arbml/ashaar")
             $('input').on('input', function (e) {
                 reload_dataset = true;
             });
